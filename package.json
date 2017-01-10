@@ -22,7 +22,6 @@
     "https": "^1.0.0",
     "jsonfile": "^2.4.0",
     "request": "^2.79.0",
-    "socket.io": "^0.9.17",
     "unirest": "^0.5.1",
     "util": "^0.10.3",
     "winston": "^2.3.0"
