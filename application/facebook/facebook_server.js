@@ -15,12 +15,73 @@ var
 
 var util = require('util');
 
+var unirest = require('unirest');
 
 var platformType = "FBMS";
 
 module.exports = {
 
-  receivedMessage: function(event) {
+  receivedData(req, res, data) {
+    // Make sure this is a page subscription
+    if (data.object == 'page') {
+      // Iterate over each entry
+      // There may be multiple if batched
+
+      //var objChannelId = flagMap.getFlag(channelId, "channelId");
+      //var objPlatformType = flagMap.getFlag(objChannelId, "platformType");
+      logger.verbose("NEWS -> DATA ::: ", data)
+      service.sendNews(data, function(response) {
+        if (response.statusCode === "200" && response.response != null) {
+          logger.verbose("NEWS -> RESPONSE :::  ", response.response)
+          template.callSendAPI(response.response[0])
+        } 
+      });
+
+      data.entry.forEach(function(pageEntry) {
+        var pageID = pageEntry.id;
+        var timeOfEvent = pageEntry.time;
+
+
+        // Iterate over each messaging event
+        pageEntry.messaging.forEach(function(messagingEvent) {
+          //this.receivedMessage()
+
+
+          if (messagingEvent.optin) {
+            //receivedAuthentication(messagingEvent);
+          }
+          else if (messagingEvent.message) {
+            // receivedMessage(messagingEvent);
+          }
+          else if (messagingEvent.delivery) {
+            //receivedDeliveryConfirmation(messagingEvent);
+          }
+          else if (messagingEvent.postback) {
+            // receivedPostback(messagingEvent);
+          }
+          else if (messagingEvent.read) {
+            //receivedMessageRead(messagingEvent);
+          }
+          else if (messagingEvent.account_linking) {
+            //receivedAccountLink(messagingEvent);
+          }
+
+          else {
+            console.log("Webhook received unknown messagingEvent: ", messagingEvent);
+          }
+        });
+      });
+
+      // Assume all went well.
+      //
+      // You must send back a 200, within 20 seconds, to let us know you've 
+      // successfully received the callback. Otherwise, the request will time out.
+      res.sendStatus(200);
+    }
+  },
+
+  receivedMessage(event) {
+
     var messagingEvent = event;
     var senderID = event.sender.id;
     var recipientID = event.recipient.id;
@@ -67,7 +128,8 @@ module.exports = {
     if (messageText) {
 
       flagMap.setFlag(channelId, "channelId", channelId);
-      flagMap.setFlag(channelId, "type", platformType);
+      flagMap.setFlag(channelId, "platformType", platformType);
+      //flagMap.setFlag(channelId, "flagMenu", 0);
 
 
       if (utility.isEquals(messageText, GLOBALS.GET_STARTED.LABEL)) {
@@ -103,13 +165,21 @@ module.exports = {
       else if (utility.isEquals(messageText, GLOBALS.ADMINISTRASI.TUTUP_LAYANAN.TIDAK.LABEL) && utility.isCheckFlagMenu(flagMap.getFlag(channelId, "flagMenu"), GLOBALS.ADMINISTRASI.TUTUP_LAYANAN.VALUE)) {
         flagMap.setFlag(channelId, "flagMenu", GLOBALS.ADMINISTRASI.TUTUP_LAYANAN.TIDAK.VALUE);
       }
-      else if (utility.isEquals(messageText, GLOBALS.ADMINISTRASI.REG_INFO_KK.LABEL) && utility.isCheckFlagMenu(flagMap.getFlag(channelId, "flagMenu"), GLOBALS.MENU.ADMINISTRASI.VALUE)) {
-        flagMap.setFlag(channelId, "flagMenu", GLOBALS.ADMINISTRASI.REG_INFO_KK.VALUE);
-      }
-
+      // else if (utility.isEquals(messageText, GLOBALS.ADMINISTRASI.REG_INFO_KK.LABEL) && utility.isCheckFlagMenu(flagMap.getFlag(channelId, "flagMenu"), GLOBALS.MENU.ADMINISTRASI.VALUE)) {
+      //   flagMap.setFlag(channelId, "flagMenu", GLOBALS.ADMINISTRASI.REG_INFO_KK.VALUE);
+      // }
 
       else if (utility.isEquals(messageText, "menu")) {
         flagMap.setFlag(channelId, "flagMenu", 999);
+      }
+      else {
+        var objChannelId = flagMap.getFlag(channelId, "channelId");
+        var objPlatformType = flagMap.getFlag(objChannelId, "platformType");
+        logger.verbose("NEWS ->", event);
+        service.sendNews(event, function(response) {
+          logger.verbose("NEWS ->", response);
+        });
+
       }
 
 
@@ -145,9 +215,9 @@ module.exports = {
       /* REGISTRASI */
       else if (utility.isCheckFlagMenu(flagMap.getFlag(channelId, "flagMenu"), GLOBALS.MENU.REGISTRASI.VALUE)) {
         var objChannelId = flagMap.getFlag(channelId, "channelId");
-        var objType = flagMap.getFlag(objChannelId, "type");
+        var objPlatformType = flagMap.getFlag(objChannelId, "platformType");
 
-        service.checkStatusUser(objChannelId, objType, function(response) {
+        service.checkStatusUser(objChannelId, objPlatformType, function(response) {
           logger.info("response->" + response)
           response = JSON.stringify(response);
           var resp = JSON.parse(response);
@@ -172,14 +242,13 @@ module.exports = {
       }
       else if (utility.isCheckFlagMenu(flagMap.getFlag(channelId, "flagMenu"), GLOBALS.REGISTRASI.STEP_1)) {
         var objChannelId = flagMap.getFlag(channelId, "channelId");
-        var objType = flagMap.getFlag(objChannelId, "type");
-
+        var objPlatformType = flagMap.getFlag(objChannelId, "platformType");
 
         flagMap.setFlag(objChannelId, "cardNo", messageText);
         var objCardNo = flagMap.getFlag(objChannelId, "cardNo");
 
         if (utility.isFormatNumberATMCard(objCardNo)) {
-          service.userRegistration(objChannelId, objType, objCardNo, function(response) {
+          service.userRegistration(objChannelId, objPlatformType, objCardNo, function(response) {
             logger.info("response->" + response)
             response = JSON.stringify(response);
             var resp = JSON.parse(response);
@@ -255,7 +324,7 @@ module.exports = {
 
       else if (utility.isCheckFlagMenu(flagMap.getFlag(channelId, "flagMenu"), GLOBALS.REGISTRASI.STEP_2)) {
         var objChannelId = flagMap.getFlag(channelId, "channelId");
-        var objType = flagMap.getFlag(channelId, "type");
+        var objPlatformType = flagMap.getFlag(channelId, "platformType");
 
         flagMap.setFlag(channelId, "phoneNumber", messageText);
         var objPhoneNumber = flagMap.getFlag(objChannelId, "phoneNumber");
@@ -290,7 +359,6 @@ module.exports = {
 
       else if (utility.isCheckFlagMenu(flagMap.getFlag(channelId, "flagMenu"), GLOBALS.REGISTRASI.STEP_3)) {
         var objChannelId = flagMap.getFlag(channelId, "channelId");
-        var objType = flagMap.getFlag(channelId, "type");
 
         flagMap.setFlag(channelId, "tombolOTP", messageText);
         var objTombolOTP = flagMap.getFlag(channelId, "tombolOTP");
@@ -338,13 +406,13 @@ module.exports = {
       }
       else if (utility.isCheckFlagMenu(flagMap.getFlag(channelId, "flagMenu"), GLOBALS.REGISTRASI.STEP_4)) {
         var objChannelId = flagMap.getFlag(channelId, "channelId");
-        var objType = flagMap.getFlag(channelId, "type");
+        var objPlatformType = flagMap.getFlag(channelId, "platformType");
 
         flagMap.setFlag(objChannelId, "OTP", messageText);
         var objOTP = flagMap.getFlag(objChannelId, "OTP");
 
         if (utility.isFormatOneTimePassword(objOTP)) {
-          service.authOTP(objChannelId, objType, objOTP, function(response) {
+          service.authOTP(objChannelId, objPlatformType, objOTP, function(response) {
             logger.info("response->" + response)
             response = JSON.stringify(response);
             var resp = JSON.parse(response);
@@ -372,107 +440,107 @@ module.exports = {
       ADMINISTRASI
       ==============================================
       */
-      if (utility.isCheckFlagMenu(flagMap.getFlag(channelId, "flagMenu"), GLOBALS.MENU.ADMINISTRASI.VALUE)) {
-        var objChannelId = flagMap.getFlag(channelId, "channelId");
+      // if (utility.isCheckFlagMenu(flagMap.getFlag(channelId, "flagMenu"), GLOBALS.MENU.ADMINISTRASI.VALUE)) {
+      //   var objChannelId = flagMap.getFlag(channelId, "channelId");
 
-        var button = ["Reg Info KK", "Hapus Reg Info KK", "Tutup Layanan"];
-        var myMessage = template.convertArrayToAction(button);
-        template.sendMessageButton(objChannelId, stringMsg.MENU, myMessage);
-      }
-      //REG_INFO_KK
-      else if (utility.isCheckFlagMenu(flagMap.getFlag(channelId, "flagMenu"), GLOBALS.ADMINISTRASI.REG_INFO_KK.VALUE)) {
-        var objChannelId = flagMap.getFlag(channelId, "channelId");
-        var button = ["Batal"];
-        var messageValue = template.convertArrayToAction(button);
-        var messageText = stringMsg.INPUT_KK;
-        template.sendMessageButton(objChannelId, messageText, messageValue);
-        
-        flagMap.setFlag(channelId, "flagMenu", GLOBALS.ADMINISTRASI.REG_INFO_KK.STEP.STEP_1);
-      }
-      else if (utility.isCheckFlagMenu(flagMap.getFlag(channelId, "flagMenu"), GLOBALS.ADMINISTRASI.REG_INFO_KK.STEP.STEP_1.VALUE)) {
-        var objChannelId = flagMap.getFlag(channelId, "channelId");
-        var button = ["Batal"];
+      //   var button = ["Reg Info KK", "Hapus Reg Info KK", "Tutup Layanan"];
+      //   var myMessage = template.convertArrayToAction(button);
+      //   template.sendMessageButton(objChannelId, stringMsg.MENU, myMessage);
+      // }
+      // //REG_INFO_KK
+      // else if (utility.isCheckFlagMenu(flagMap.getFlag(channelId, "flagMenu"), GLOBALS.ADMINISTRASI.REG_INFO_KK.VALUE)) {
+      //   var objChannelId = flagMap.getFlag(channelId, "channelId");
+      //   var button = ["Batal"];
+      //   var messageValue = template.convertArrayToAction(button);
+      //   var messageText = stringMsg.INPUT_KK;
+      //   template.sendMessageButton(objChannelId, messageText, messageValue);
 
-
-        flagMap.setFlag(channelId, "creditCardNumber", messageText);
-        var objCreditCardNumber = flagMap.getFlag(objChannelId, "creditCardNumber");
-        if (utility.isFormatNumberCreditCard(objCreditCardNumber)) {
-          //--------------------------------------------------------------------
-          service.sendOTP(objChannelId, objType, objCreditCardNumber, function(response) {
-            logger.info("response->" + response)
-            response = JSON.stringify(response);
-            var resp = JSON.parse(response);
-
-            if (resp.code === "00") {
-              flagMap.setFlag(channelId, "flagMenu", GLOBALS.REGISTRASI.STEP_3);
-              var messageText = stringMsg.REG_INFO_KK;
-              template.sendMessageTextWithQuickMenu(objChannelId, messageText, stringMsg._menu);
-            }
-            else {
-              var msg = resp.msg
-              template.sendMessageText(objChannelId, msg)
-            }
-          });
-          //--------------------------------------------------------------------
-        }
-        else {
-          template.sendMessageText(objChannelId, errorMsg.INPUT_KARTU_KREDIT)
-          
-          var button = ["Batal"];
-          var messageValue = template.convertArrayToAction(button);
-          var messageText = stringMsg.INPUT_KK;
-          template.sendMessageButton(objChannelId, messageText, messageValue);
-        }
-
-      }
-      
-      //HAPUS_REG_INFO_KK
-      else if (utility.isCheckFlagMenu(flagMap.getFlag(channelId, "flagMenu"), GLOBALS.ADMINISTRASI.HAPUS_REG_INFO_KK.VALUE)) {
-        var objChannelId = flagMap.getFlag(channelId, "channelId");
-        var button = ["Batal"];
-        var messageValue = template.convertArrayToAction(button);
-        var messageText = stringMsg.INPUT_KK;
-        template.sendMessageButton(objChannelId, messageText, messageValue);
-        
-        flagMap.setFlag(channelId, "flagMenu", GLOBALS.ADMINISTRASI.HAPUS_REG_INFO_KK.STEP.STEP_1);
-      }
-      else if (utility.isCheckFlagMenu(flagMap.getFlag(channelId, "flagMenu"), GLOBALS.ADMINISTRASI.HAPUS_REG_INFO_KK.STEP.STEP_1.VALUE)) {
-        var objChannelId = flagMap.getFlag(channelId, "channelId");
-        var button = ["Batal"];
+      //   flagMap.setFlag(channelId, "flagMenu", GLOBALS.ADMINISTRASI.REG_INFO_KK.STEP.STEP_1);
+      // }
+      // else if (utility.isCheckFlagMenu(flagMap.getFlag(channelId, "flagMenu"), GLOBALS.ADMINISTRASI.REG_INFO_KK.STEP.STEP_1.VALUE)) {
+      //   var objChannelId = flagMap.getFlag(channelId, "channelId");
+      //   var button = ["Batal"];
 
 
-        flagMap.setFlag(channelId, "creditCardNumber", messageText);
-        var objCreditCardNumber = flagMap.getFlag(objChannelId, "creditCardNumber");
-        if (utility.isFormatNumberCreditCard(objCreditCardNumber)) {
-          //--------------------------------------------------------------------
-          service.sendOTP(objChannelId, objType, objCreditCardNumber, function(response) {
-            logger.info("response->" + response)
-            response = JSON.stringify(response);
-            var resp = JSON.parse(response);
+      //   flagMap.setFlag(channelId, "creditCardNumber", messageText);
+      //   var objCreditCardNumber = flagMap.getFlag(objChannelId, "creditCardNumber");
+      //   if (utility.isFormatNumberCreditCard(objCreditCardNumber)) {
+      //     //--------------------------------------------------------------------
+      //     service.sendOTP(objChannelId, objType, objCreditCardNumber, function(response) {
+      //       logger.info("response->" + response)
+      //       response = JSON.stringify(response);
+      //       var resp = JSON.parse(response);
 
-            if (resp.code === "00") {
-              flagMap.setFlag(channelId, "flagMenu", GLOBALS.REGISTRASI.STEP_3);
-              var messageText = stringMsg.HAPUS_REG_INFO_KK;
-              template.sendMessageTextWithQuickMenu(objChannelId, messageText, stringMsg._menu);
-            }
-            else {
-              var msg = resp.msg
-              template.sendMessageText(objChannelId, msg)
-            }
-          });
-          //--------------------------------------------------------------------
-        }
-        else {
-          template.sendMessageText(objChannelId, errorMsg.INPUT_KARTU_KREDIT)
-          
-          var button = ["Batal"];
-          var messageValue = template.convertArrayToAction(button);
-          var messageText = stringMsg.INPUT_KK;
-          template.sendMessageButton(objChannelId, messageText, messageValue);
-        }
+      //       if (resp.code === "00") {
+      //         flagMap.setFlag(channelId, "flagMenu", GLOBALS.REGISTRASI.STEP_3);
+      //         var messageText = stringMsg.REG_INFO_KK;
+      //         template.sendMessageTextWithQuickMenu(objChannelId, messageText, stringMsg._menu);
+      //       }
+      //       else {
+      //         var msg = resp.msg
+      //         template.sendMessageText(objChannelId, msg)
+      //       }
+      //     });
+      //     //--------------------------------------------------------------------
+      //   }
+      //   else {
+      //     template.sendMessageText(objChannelId, errorMsg.INPUT_KARTU_KREDIT)
 
-      }
-      
+      //     var button = ["Batal"];
+      //     var messageValue = template.convertArrayToAction(button);
+      //     var messageText = stringMsg.INPUT_KK;
+      //     template.sendMessageButton(objChannelId, messageText, messageValue);
+      //   }
+
+      // }
+
+      // //HAPUS_REG_INFO_KK
+      // else if (utility.isCheckFlagMenu(flagMap.getFlag(channelId, "flagMenu"), GLOBALS.ADMINISTRASI.HAPUS_REG_INFO_KK.VALUE)) {
+      //   var objChannelId = flagMap.getFlag(channelId, "channelId");
+      //   var button = ["Batal"];
+      //   var messageValue = template.convertArrayToAction(button);
+      //   var messageText = stringMsg.INPUT_KK;
+      //   template.sendMessageButton(objChannelId, messageText, messageValue);
+
+      //   flagMap.setFlag(channelId, "flagMenu", GLOBALS.ADMINISTRASI.HAPUS_REG_INFO_KK.STEP.STEP_1);
+      // }
+      // else if (utility.isCheckFlagMenu(flagMap.getFlag(channelId, "flagMenu"), GLOBALS.ADMINISTRASI.HAPUS_REG_INFO_KK.STEP.STEP_1.VALUE)) {
+      //   var objChannelId = flagMap.getFlag(channelId, "channelId");
+      //   var button = ["Batal"];
+
+
+      //   flagMap.setFlag(channelId, "creditCardNumber", messageText);
+      //   var objCreditCardNumber = flagMap.getFlag(objChannelId, "creditCardNumber");
+      //   if (utility.isFormatNumberCreditCard(objCreditCardNumber)) {
+      //     //--------------------------------------------------------------------
+      //     service.sendOTP(objChannelId, objType, objCreditCardNumber, function(response) {
+      //       logger.info("response->" + response)
+      //       response = JSON.stringify(response);
+      //       var resp = JSON.parse(response);
+
+      //       if (resp.code === "00") {
+      //         flagMap.setFlag(channelId, "flagMenu", GLOBALS.REGISTRASI.STEP_3);
+      //         var messageText = stringMsg.HAPUS_REG_INFO_KK;
+      //         template.sendMessageTextWithQuickMenu(objChannelId, messageText, stringMsg._menu);
+      //       }
+      //       else {
+      //         var msg = resp.msg
+      //         template.sendMessageText(objChannelId, msg)
+      //       }
+      //     });
+      //     //--------------------------------------------------------------------
+      //   }
+      //   else {
+      //     template.sendMessageText(objChannelId, errorMsg.INPUT_KARTU_KREDIT)
+
+      //     var button = ["Batal"];
+      //     var messageValue = template.convertArrayToAction(button);
+      //     var messageText = stringMsg.INPUT_KK;
+      //     template.sendMessageButton(objChannelId, messageText, messageValue);
+      //   }
+
+      // }
+
       //TUTUP_LAYANAN
       else if (utility.isCheckFlagMenu(flagMap.getFlag(channelId, "flagMenu"), GLOBALS.ADMINISTRASI.TUTUP_LAYANAN.VALUE)) {
         var objChannelId = flagMap.getFlag(channelId, "channelId");
@@ -580,6 +648,26 @@ module.exports = {
       else if (messageAttachments) {
         template.sendTextMessage(senderID, "Message with attachment received");
       }
+
+      /*
+      ==============================================
+      NLP TRANSAKSI PERBANKAN
+      ==============================================
+      */
+      else {
+        // var objChannelId = flagMap.getFlag(channelId, "channelId");
+        // var objPlatformType = flagMap.getFlag(objChannelId, "platformType");
+        // service.sendNLP(objChannelId, objPlatformType, messageText, function(response) {
+        //   logger.verbose("NLP ->", response);
+        //   if (response.message === "") {
+
+        //   }
+        //   template.sendMessageText(objChannelId, response.message)
+        // });
+
+      }
+
+
     }
   },
 

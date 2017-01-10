@@ -48,7 +48,7 @@ module.exports = {
     },
 
     ADMINISTRASI: {
-        REK_INFO_KK: {
+        REG_INFO_KK: {
             LABEL: 'Rek Info KK',
             VALUE: '151',
             

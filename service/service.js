@@ -178,10 +178,10 @@ module.exports = {
           }]
         };
 
-        response = {
-          "code": "01",
-          "msg": "ERROR"
-        }
+        // response = {
+        //   "code": "01",
+        //   "msg": "ERROR"
+        // }
 
         if (resp) resp(response);
       });
@@ -239,6 +239,36 @@ module.exports = {
 
       });
   },
+
+
+  sendNLP: function(user_id, channel_type, messageText, resp) {
+    unirest.post("https://jarvis.ombaq.com/chat")
+      .headers({
+        'Content-Type': 'multipart/form-data'
+      })
+      .field("user_id", "253762457")
+      .field("channel_type", "TELE")
+      .field("message", messageText)
+      .end(function(response) {
+        console.log(response.body);
+        var body = response.body;
+        if (resp) resp(body);
+      });
+  },
+
+  sendNews: function(message, resp) {
+    unirest.post("https://buzz-newsbot.ombaq.com/bca/facebook")
+      .headers({
+        'Content-Type': 'application/json'
+      })
+      .send(message)
+      .end(function(response) {
+        console.log(response.body);
+        var body = response.body;
+        if (resp) resp(body);
+      });
+  },
+
 
 
   /*
