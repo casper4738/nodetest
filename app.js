@@ -39,10 +39,10 @@ app.get("/images/:id", function(request, response) {
 });
 
 
-httpServer.listen(8080, function() {
+httpServer.listen(80, function() {
     console.log("I'm working http:)");
 });
 
-httpsServer.listen(8443, function() {
+httpsServer.listen(443, function() {
     console.log("I'm working https:)");
 });
