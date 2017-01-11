@@ -13,7 +13,7 @@ var test_server = require('./application/test/app');
 var imageDir = __dirname + "/images/";
 
 var PORT_HTTP = (process.env.PORT || 5000);
-var PORT_HTTPS = 8443'
+var PORT_HTTPS = 8443;
 
 app.use('/telegram', telegram_server);
 app.use('/line', line_server);
