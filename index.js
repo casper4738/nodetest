@@ -31,7 +31,7 @@ var credentials = {
 
 var httpServer = http.createServer(app);
 //var httpsServer = https.createServer(credentials, app);
-var httpsServer = https.createServer(app);
+//var httpsServer = https.createServer(app);
 
 
 app.get("/images/:id", function(request, response) {
